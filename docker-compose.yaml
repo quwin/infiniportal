@@ -1,0 +1,39 @@
+services:
+  bot:
+    build: .
+    container_name: infiniportal-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - infiniportal-data:/app/data
+    working_dir: /app
+    command: >
+      sh -c "
+      ln -sf /app/data/leaderboard.db /app/leaderboard.db &&
+      ln -sf /app/data/jobs.db /app/jobs.db &&
+      ln -sf /app/data/discord.db /app/discord.db &&
+      python main.py
+      "
+
+  web:
+    build: .
+    container_name: infiniportal-web
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "5050:5050"
+    volumes:
+      - infiniportal-data:/app/data
+    working_dir: /app
+    command: >
+      sh -c "
+      ln -sf /app/data/leaderboard.db /app/leaderboard.db &&
+      ln -sf /app/data/jobs.db /app/jobs.db &&
+      ln -sf /app/data/discord.db /app/discord.db &&
+      poetry run hypercorn webserver:app --bind 0.0.0.0:5050
+      "
+
+volumes:
+  infiniportal-data:

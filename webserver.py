@@ -1,5 +1,5 @@
 from quart import Quart, request, redirect, url_for, render_template_string, jsonify, send_from_directory
-from constants import REDIRECT_URI, COLLAB_ID, COLLAB_SECRET, COLLAB_KEY, SKILLS, SEARCH_PROFILE_LINK, SERVERIP, PROFILE_MID_LINK
+from constants import REDIRECT_URI, COLLAB_ID, COLLAB_SECRET, COLLAB_KEY, SKILLS, SEARCH_PROFILE_LINK, PROFILE_MID_LINK, SERVER_IP
 from database import add_collab_tokens, add_collab_wallets
 from profile_utils import profile_finder
 import urllib.parse
@@ -73,12 +73,11 @@ async def get_leaderboard(table_name, order, page_number, quantity, guild_name=N
                 LIMIT {str(quantity)} OFFSET ?''', (offset, ))
 
         rows = await cursor.fetchall()
+        await db.close()
         return jsonify([dict(row) for row in rows])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    finally:
-        await db.close()
-
+            
 @app.route('/player_rank/<user_id>', methods=['GET'])
 async def get_user_ranking(user_id):
     try:
@@ -98,14 +97,13 @@ async def get_user_ranking(user_id):
             ''', (user_id, user_id)
         )
         result = await cursor.fetchone()
+        await db.close()
         if result:
             return jsonify({'user_id': user_id, 'rank': result['rank']})
         else:
             return jsonify({'error': 'Unexpected error occurred'}), 500
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    finally:
-        await db.close()
+        return jsonify({'error': str(e)}), 500        
 
 
 @app.route('/search/<input>', methods=['GET'])
@@ -273,4 +271,4 @@ async def serve_static(path):
 
 
 if __name__ == "__main__":
-    app.run(host=SERVERIP, port=5000, debug=True, use_reloader=False)
+    app.run(host=SERVER_IP, port=5050, debug=True, use_reloader=False)

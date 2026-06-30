@@ -1,7 +1,5 @@
 import discord
-from discord import message
-from discord import reaction
-from discord.ext import commands, tasks
+from discord.ext import tasks
 from discord import app_commands
 from profile_utils import lookup_profile, embed_profile
 from database import init_db, delete_job
@@ -36,7 +34,7 @@ async def on_ready():
   await leave_personal_servers(client)
   client.add_view(CollabButtons())
   client.add_view(firstMessageView())
-  # batch_speck_update.start()
+  batch_speck_update.start()
   batch_nft_land_update.start()
   # update_voice_channel_name.start()
   update_set_update.start()
@@ -307,8 +305,7 @@ tree.add_command(job_group)
 @app_commands.describe(page_number="Enter the page to go to")
 async def taskboard(interaction: discord.Interaction, page_number: int = 1):
   try:
-    boolean = bool(interaction.guild)
-    embed = await taskboard_embed(interaction, min(1, page_number), boolean)
+    embed = await taskboard_embed(interaction, min(1, page_number))
     await interaction.response.send_message(embed=embed, ephemeral=True)
   except Exception as e:
     if interaction.guild:

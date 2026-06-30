@@ -54,7 +54,7 @@ function HeaderBar() {
                 className="d-inline-block align-top"
                 alt="Logo"
               />
-              {' '}Infiniport.al
+              {' '}Infiniportal
             </Navbar.Brand>
             <Nav className="me-auto">
             <Row>

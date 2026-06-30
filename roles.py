@@ -61,13 +61,17 @@ async def linkRole(interaction: discord.Interaction, role: discord.Role, require
         await interaction.followup.send(f"Successfully created or updated requirements for the role: {role.mention}", ephemeral=True)\
         
 async def check_eligibility(interaction: discord.Interaction, primary_id):
-    server_id = interaction.guild.id
+    server_id = None
+    if interaction.guild is not None:
+        server_id = interaction.guild.id
     role_data = await get_discord_roles(server_id)
     valid_roles = []
     if role_data and role_data[2] and role_data[6] and role_data[7] and role_data[8]:
         guild_handle = await get_guild_handle(role_data[2])
         async with aiohttp.ClientSession() as session: #, aiosqlite.connect('leaderboard.db') as c,:
-            guild_info = await guild_data(session, guild_handle[0])
+            guild_info = None
+            if guild_handle is not None:
+                guild_info = await guild_data(session, guild_handle[0])
             #player_data = await lookup_profile(c, primary_id)
             #await c.commit()
             
@@ -77,7 +81,9 @@ async def check_eligibility(interaction: discord.Interaction, primary_id):
         for i in range(len(role_ids)):
             role_id = role_ids[i]
             format = role_requirements[i].split('+')
-            isValid = check_guild_conditions(guild_info["guildMembers"], primary_id, format, role_numbers[i])
+            isValid = False
+            if guild_info is not None:
+                isValid = check_guild_conditions(guild_info["guildMembers"], primary_id, format, role_numbers[i])
             if isValid:
                 valid_roles.append(role_id)
     else: 

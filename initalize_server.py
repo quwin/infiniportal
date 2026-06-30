@@ -1,8 +1,6 @@
 import discord
-from discord.interactions import Interaction
-from modal import guildAssign, roleAssign
+from modal import GuildAssign, roleAssign
 from database import get_discord_roles
-from constants import RequirementType
 
 EMOJI = '<:winemaking:1236751228231225364>'
 BOT_NAME = "Infiniport.al"
@@ -54,7 +52,7 @@ class settingsView(discord.ui.View):
         self.add_item(self.assign_guild)
 
     async def assign_guild_callback(self, interaction: discord.Interaction):
-        await interaction.response.send_modal(guildAssign())
+        await interaction.response.send_modal(GuildAssign())
 
     async def on_timeout(self):
         try:
@@ -166,7 +164,9 @@ def settings_embed():
   return embed
 
 async def roles_embed(interaction: discord.Interaction):
-    roles = await get_discord_roles(str(interaction.guild.id))
+    roles = None
+    if interaction.guild is not None:
+        roles = await get_discord_roles(str(interaction.guild.id))
     embed = discord.Embed(
                           title=f"{BOT_NAME} Role Settings:",
                           color=0x00ff00)
@@ -184,7 +184,9 @@ async def roles_embed(interaction: discord.Interaction):
         role_numbers_list = roles[8].split(' ')
         
         for i in range(len(role_ids_list)):
-            role = interaction.guild.get_role(int(role_ids_list[i]))
+            role = None
+            if interaction.guild is not None:
+               role = interaction.guild.get_role(int(role_ids_list[i]))
             if role:
                 formatted = '> ' + role.mention + ' - ' + role_requirements_list[i] + ': ' + role_numbers_list[i]
                 role_list.append(formatted)

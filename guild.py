@@ -1,16 +1,12 @@
-from constants import GUILD_LINK, GUILD_EMBLEM, GUILD_HOME, SKILLS
-from profile_utils import lookup_profile
+from constants import GUILD_LINK, GUILD_HOME
 import aiohttp
 import aiosqlite
-from rate_limiter import AdaptiveRateLimiter
-from land import prep_player_info
 from database import init_guild_db
-from profile_utils import lookup_profile
 import discord
 import time
 
 
-async def assignguild(interaction: discord.Interaction, guild_name: str):
+async def assignGuild(interaction: discord.Interaction, guild_name: str):
     if interaction.guild is None:
         await interaction.followup.send(
             content=f"This command is for servers only!", ephemeral=True)

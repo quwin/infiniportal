@@ -161,7 +161,6 @@ cython_debug/
 
 # My Files:
 *.db
-constants.py
 node_modules/
 *.replit
 .replit

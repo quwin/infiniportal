@@ -1,8 +1,9 @@
 [tool.poetry]
-name = "python-template"
+name = "infiniportal"
 version = "0.1.0"
-description = ""
-authors = ["Your Name <you@example.com>"]
+description = "Pixels.xyz profile viewer and Discord community management tool"
+authors = ["Ethan Tran <ethantran@quwin.dev>"]
+package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.10.0,<3.12"

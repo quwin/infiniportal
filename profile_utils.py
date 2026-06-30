@@ -1,5 +1,5 @@
 import aiohttp
-from constants import SKILLS, PROFILE_MID_LINK, SEARCH_PROFILE_LINK, SKILLS_EMOJI, WEBSITE_LINK
+from constants import SKILLS, PROFILE_MID_LINK, SKILLS_EMOJI, WEBSITE_LINK, SEARCH_PROFILE_LINK
 from database import update_skills
 import urllib.parse
 import discord
@@ -67,15 +67,13 @@ def embed_profile(data, total_levels, total_skills):
     i += 1
 
   # Thumbnail image data
-  image_url = data.get('currentAvatar', {}).get('pieces',
-                                                {}).get('image', None)
+  image_url = data.get('currentAvatar', {}).get('pieces', {}).get('image', None)
 
   if image_url:
     embed.set_thumbnail(url=image_url)
 
   # Footer text
-  embed.set_author(name="Infiniport.al Link",
-                   url=f"{WEBSITE_LINK}{data['_id']}")
+  embed.set_author(name="Infiniport.al Link", url=f"{WEBSITE_LINK}{data['_id']}")
 
   return embed
 
@@ -83,8 +81,7 @@ def embed_profile(data, total_levels, total_skills):
 #Finds profile info from string vs ID
 async def profile_finder(session, input):
   encoded_input = urllib.parse.quote(input)
-  async with session.get(SEARCH_PROFILE_LINK +
-                         encoded_input) as search_response:
+  async with session.get(SEARCH_PROFILE_LINK + encoded_input) as search_response:
     search_json = await search_response.json()
     for profile in search_json:
       if profile['username'] == input:

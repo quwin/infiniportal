@@ -1,7 +1,7 @@
 import discord
 import time
 from database import add_job
-from guild import assignguild
+from guild import assignGuild
 from roles import linkRole
 from constants import RequirementType
 
@@ -71,14 +71,14 @@ class JobInput(discord.ui.Modal, title='Input Task Details:'):
         ))
     
     async def on_submit(self, interaction: discord.Interaction):
-        item = self.children[0].value
-        quantity = self.children[1].value
-        reward = self.children[2].value
-        details = self.children[3].value
-        time_limit = self.children[4].value
+        item = self.job_data.get("item", "")
+        quantity = self.job_data.get("quantity", "0")
+        reward = self.job_data.get("reward", "")
+        details = self.job_data.get("details", "")
+        time_limit = self.job_data.get("time_limit", 0.0)
         # conversions 
         try:
-            expiration_date: float = (float(time_limit) * 3600.0) + time.time()
+            expiration_date: float = (time_limit * 3600.0) + time.time()
         except ValueError:
             await interaction.response.send_message("Invalid input for time limit. Please enter a valid number.", ephemeral=True)
             return
@@ -159,23 +159,39 @@ def embed_job(author,
         embed.add_field(name="", value=f"Claimed by <@{claimer}> \n")
     return embed
 
-class guildAssign(discord.ui.Modal, title='Input Guild Handle:'):
+class GuildAssign(discord.ui.Modal, title="Input Guild Handle:"):
     def __init__(self):
         super().__init__()
-        self.add_item(discord.ui.TextInput(
-            label='Guild Handle',
-            placeholder='cookiemonsters',
+        self.guild_handle = discord.ui.TextInput(
+            label="Guild Handle",
+            placeholder="cookiemonsters",
             max_length=256,
-        ))
+            required=True,
+        )
+        self.add_item(self.guild_handle)
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(thinking=True, ephemeral=True)
-        await assignguild(interaction, self.children[0].value)
-        
-        async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
-            print(f"Error: {error}")
-            await interaction.response.send_message(f"Failed to assign a guild: {str(error)}", ephemeral=True)
-            return
+        guild_handle = str(self.guild_handle.value).strip()
+        await assignGuild(interaction, guild_handle)
+
+    async def on_error(
+        self,
+        interaction: discord.Interaction,
+        error: Exception,
+    ) -> None:
+        print(f"Error: {error}")
+
+        if interaction.response.is_done():
+            await interaction.followup.send(
+                f"Failed to assign a guild: {error}",
+                ephemeral=True,
+            )
+        else:
+            await interaction.response.send_message(
+                f"Failed to assign a guild: {error}",
+                ephemeral=True,
+            )
 
 class roleAssign(discord.ui.Modal, title='Input Role Information:'):
     def __init__(self, role: discord.Role, rule):
@@ -183,16 +199,17 @@ class roleAssign(discord.ui.Modal, title='Input Role Information:'):
         self.role = role
         label, required = match_rule(rule)
         self.required = rule + '+' + required.value
-        self.add_item(discord.ui.TextInput(
+        self.quantity = discord.ui.TextInput(
             label=f'{label}',
             placeholder='1',
             max_length=16,
             default='1',
-        ))
+        )
+        self.add_item(self.quantity)
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(thinking=True, ephemeral=True)
-        await linkRole(interaction, self.role, self.required, self.children[0].value)
+        await linkRole(interaction, self.role, self.required, str(self.quantity.value).strip())
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         print(f"Error: {error}")

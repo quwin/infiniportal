@@ -1,8 +1,6 @@
-import asyncio
 import discord
 import time
-from constants import SKILLS
-from database import fetch_job, delete_job, update_job_claimer, add_job, update_job_message, fetch_job_location
+from database import fetch_job, delete_job, update_job_claimer, update_job_message, fetch_job_location
 from modal import JobInput, embed_job
 
 pixelshine = '<a:PIXELshine:1241404259774496878>'
@@ -138,8 +136,7 @@ async def job_error(error, interaction: discord.Interaction | None):
             ephemeral=True)
 
 
-async def interact_job(interaction: discord.Interaction, view, job_id: str,
-                       button: str):
+async def interact_job(interaction: discord.Interaction, view, job_id: str, button: str):
     job = await fetch_job(job_id)
     if job:
         job_id, author_id, item, quantity, reward, details, time_limit, claimer_id, message_id, channel_id, server_id = job
@@ -172,21 +169,23 @@ async def interact_job(interaction: discord.Interaction, view, job_id: str,
                     )
 
                 await delete_job(job_id)
-                await interaction.message.delete()
+                if interaction.message is not None:
+                    await interaction.message.delete()
                 return
             elif interaction.user.id == claimer_id:
                 await interaction.response.send_message(
                     f"<@{author_id}>'s task of {quantity} x {item} has been completed by {interaction.user.mention} for {reward}!"
                 )
                 await delete_job(job_id)
-                await interaction.message.delete()
+                if interaction.message is not None:
+                    await interaction.message.delete()
                 return
             else:
                 await interaction.response.defer()
 
-        embed = embed_job(author, item, quantity, reward, details, time_limit,
-                          claimer_id)
-        await interaction.message.edit(embed=embed, view=view)
+        embed = embed_job(author, item, quantity, reward, details, time_limit, claimer_id)
+        if interaction.message is not None:
+            await interaction.message.edit(embed=embed, view=view)
 
 async def delete_job_message(job_id, client):
     try:
