@@ -1,5 +1,4 @@
 import discord
-import asyncio
 from database import fetch_unclaimed_jobs
 
 class TaskboardView(discord.ui.View):

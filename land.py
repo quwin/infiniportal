@@ -52,19 +52,15 @@ async def speck_data(conn, session):
     nulls = 0
     total_data_batch = []
     skill_data_batch = {skill: [] for skill in SKILLS}
-    cursor = await conn.cursor()
     limiter = AdaptiveRateLimiter(3, 1)
 
     while True:
         if i % BATCH_SIZE == 0:
             print(f'{i} Specks scanned.')
-            await batch_update_players(cursor, total_data_batch,
-                                       skill_data_batch)
-            await conn.commit()
+            await batch_update_players(conn, total_data_batch, skill_data_batch)
             limiter.reset()
 
-        async with limiter, session.get(SPECK_OWNER_LINK +
-                                        str(FIRST_SPECK + i)) as response:
+        async with limiter, session.get(SPECK_OWNER_LINK + str(FIRST_SPECK + i)) as response:
             if response.status != 200:
                 print(f'Speck number not Found: {FIRST_SPECK + i}')
                 await asyncio.sleep(5)
@@ -79,9 +75,7 @@ async def speck_data(conn, session):
                     print(
                         f'Player Data not Found for Speck {FIRST_SPECK + i-GIVE_UP} through Speck {FIRST_SPECK + i}, stopping'
                     )
-                    await batch_update_players(cursor, total_data_batch,
-                                               skill_data_batch)
-                    await conn.commit()
+                    await batch_update_players(conn, total_data_batch, skill_data_batch)
                     limiter.reset()
                     return
                 else:

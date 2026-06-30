@@ -1,227 +1,561 @@
-import aiosqlite
+import os
+import asyncpg
 from constants import SKILLS
 
+DATABASE_URL = os.environ["DATABASE_URL"]
+
+_pool: asyncpg.Pool | None = None
+
+
+async def get_pool() -> asyncpg.Pool:
+    global _pool
+    if _pool is None:
+        _pool = await asyncpg.create_pool(
+            DATABASE_URL,
+            min_size=1,
+            max_size=10,
+        )
+
+    return _pool
+
+
+async def close_pool() -> None:
+    global _pool
+    if _pool is not None:
+        await _pool.close()
+        _pool = None
+
+
 async def init_db():
-    async with aiosqlite.connect('leaderboard.db') as conn:
-        c = await conn.cursor()
-        await c.execute(
-            '''CREATE TABLE IF NOT EXISTS total
-            (user_id text PRIMARY KEY, username text, level integer, exp float)'''
+    pool = await get_pool()
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS total (
+                user_id TEXT PRIMARY KEY,
+                username TEXT NOT NULL,
+                level INTEGER NOT NULL,
+                exp DOUBLE PRECISION NOT NULL
+            );
+            """
         )
-        await c.execute(
-            '''CREATE TABLE IF NOT EXISTS guilds
-            (id text PRIMARY KEY, handle text, emblem text,
-            shard_price integer, land_count integer)'''
+
+        await conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS guilds (
+                id TEXT PRIMARY KEY,
+                handle TEXT NOT NULL,
+                emblem TEXT,
+                shard_price INTEGER,
+                land_count INTEGER
+            );
+            """
         )
+
         for skill in SKILLS:
-            await c.execute(
-                f'''CREATE TABLE IF NOT EXISTS {skill}
-                (user_id text PRIMARY KEY, username text,
-                level integer, exp float, current_exp float)'''
+            await conn.execute(
+                f"""
+                CREATE TABLE IF NOT EXISTS {skill} (
+                    user_id TEXT PRIMARY KEY,
+                    username TEXT NOT NULL,
+                    level INTEGER NOT NULL,
+                    exp DOUBLE PRECISION NOT NULL,
+                    current_exp DOUBLE PRECISION NOT NULL
+                );
+                """
             )
 
+        await conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS guild_members (
+                guild_id TEXT NOT NULL REFERENCES guilds(id) ON DELETE CASCADE,
+                user_id TEXT NOT NULL,
+                username TEXT NOT NULL,
+                role TEXT NOT NULL,
+                PRIMARY KEY (guild_id, user_id)
+            );
+            """
+        )
 
-        await conn.commit()
-    # create job database
-    async with aiosqlite.connect('jobs.db') as jobs:
-        await jobs.execute('''
+        await conn.execute(
+            """
             CREATE TABLE IF NOT EXISTS jobs (
                 job_id TEXT PRIMARY KEY,
-                author_id INTEGER,
+                author_id BIGINT,
                 item TEXT,
                 quantity INTEGER,
                 reward TEXT,
                 details TEXT,
-                time_limit REAL,
-                claimer_id INTEGER,
-                message_id INTEGER,
-                channel_id INTEGER,
-                server_id INTEGER
-            )
-        ''')
-        await jobs.commit()
-    # create discord stats database
-    async with aiosqlite.connect('discord.db') as discord:
-        await discord.execute(
-        '''CREATE TABLE IF NOT EXISTS discord_servers
-        (server_id text PRIMARY KEY,
-        premium REAL,
-        linked_guild text,
-        global_tasks boolean,
-        account_linking boolean,
-        admin_role text,
-        role_ids text,
-        role_requirements text,
-        role_numbers text
-        )'''
+                time_limit DOUBLE PRECISION,
+                claimer_id BIGINT,
+                message_id BIGINT,
+                channel_id BIGINT,
+                server_id BIGINT
+            );
+            """
         )
-        await discord.execute(
-            '''CREATE TABLE IF NOT EXISTS discord_users
-            (user_id text PRIMARY KEY,
-            wallets text,
-            pixels_ids text,
-            primary_id text,
-            access_token text,
-            refresh_token text
-            )'''
+
+        await conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS discord_servers (
+                server_id TEXT PRIMARY KEY,
+                premium DOUBLE PRECISION,
+                linked_guild TEXT,
+                global_tasks BOOLEAN,
+                account_linking BOOLEAN,
+                admin_role TEXT,
+                role_ids TEXT,
+                role_requirements TEXT,
+                role_numbers TEXT
+            );
+            """
         )
-        await discord.commit()
-        
-    print('Databases Initialized!')
+
+        await conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS discord_users (
+                user_id TEXT PRIMARY KEY,
+                wallets TEXT,
+                pixels_ids TEXT,
+                primary_id TEXT,
+                access_token TEXT,
+                refresh_token TEXT
+            );
+            """
+        )
+
+    print("Postgres database initialized!")
 
 
-async def update_skills(c, json, total_level, total_exp):
-    if json is None:
+async def update_skills(conn, data, total_level, total_exp):
+    if data is None:
         return
-    await c.execute(
-      '''INSERT OR REPLACE INTO total (user_id, username, level, exp)
-      VALUES (?, ?, ?, ?)''',
-      (json['_id'], json['username'], total_level, total_exp))
-    for skill in SKILLS:
-      skill_data = json['levels'].get(skill, None)
-      if skill_data:
-          await c.execute(
-              f'''INSERT OR REPLACE INTO {skill}
-              (user_id, username , level, exp, current_exp) VALUES (?, ?, ?, ?, ?)''',
-              (json['_id'], json['username'], skill_data['level'],
-               skill_data['totalExp'], skill_data['exp']))
-    
-    # print(f'User ID {json["_id"]} updated!')
 
-async def init_guild_db(guild_data, server_id = None):
-    async with aiosqlite.connect('discord.db') as discord, aiosqlite.connect('leaderboard.db') as leaderboard: 
-        lb = await leaderboard.cursor()
-        id = guild_data['_id']
-        await lb.execute(
-            '''INSERT OR REPLACE INTO guilds
-            (id, handle, emblem, shard_price, land_count)
-            VALUES (?, ?, ?, ?, ?)''',
-            (id, guild_data['handle'], guild_data.get('emblem', ''), guild_data['membershipsCount'], guild_data['mapCount'],)
-        )
-        await lb.execute(
-            f'''CREATE TABLE IF NOT EXISTS guild_{id}
-            (user_id text PRIMARY KEY, username text, role text)'''
-        )
-        
-        if server_id:
-            async with discord.execute('SELECT 1 FROM discord_servers WHERE server_id = ?', (server_id,)) as cursor:
-                exists = await cursor.fetchone()
-                if exists:
-                    await discord.execute('UPDATE discord_servers SET linked_guild = ? WHERE server_id = ?', (id, server_id))
-                else:
-                    await discord.execute('''
-                        INSERT INTO discord_servers (server_id, linked_guild)
-                        VALUES (?, ?)
-                    ''', (server_id, id))
-                    
-            await discord.commit()
-        
-        await leaderboard.commit()
+    await conn.execute(
+        """
+        INSERT INTO total (user_id, username, level, exp)
+        VALUES ($1, $2, $3, $4)
+        ON CONFLICT (user_id)
+        DO UPDATE SET
+            username = EXCLUDED.username,
+            level = EXCLUDED.level,
+            exp = EXCLUDED.exp;
+        """,
+        data["_id"],
+        data["username"],
+        total_level,
+        total_exp,
+    )
+
+    for skill in SKILLS:
+        skill_data = data["levels"].get(skill)
+        if skill_data:
+            await conn.execute(
+                f"""
+                INSERT INTO {skill} (user_id, username, level, exp, current_exp)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (user_id)
+                DO UPDATE SET
+                    username = EXCLUDED.username,
+                    level = EXCLUDED.level,
+                    exp = EXCLUDED.exp,
+                    current_exp = EXCLUDED.current_exp;
+                """,
+                data["_id"],
+                data["username"],
+                skill_data["level"],
+                skill_data["totalExp"],
+                skill_data["exp"],
+            )
+
+
+async def init_guild_db(guild_data, server_id=None):
+    if guild_data is None:
+        return
+
+    pool = await get_pool()
+
+    guild_id = guild_data["_id"]
+
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(
+                """
+                INSERT INTO guilds (id, handle, emblem, shard_price, land_count)
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (id)
+                DO UPDATE SET
+                    handle = EXCLUDED.handle,
+                    emblem = EXCLUDED.emblem,
+                    shard_price = EXCLUDED.shard_price,
+                    land_count = EXCLUDED.land_count;
+                """,
+                guild_id,
+                guild_data["handle"],
+                guild_data.get("emblem", ""),
+                guild_data["membershipsCount"],
+                guild_data["mapCount"],
+            )
+
+            if server_id:
+                await conn.execute(
+                    """
+                    INSERT INTO discord_servers (server_id, linked_guild)
+                    VALUES ($1, $2)
+                    ON CONFLICT (server_id)
+                    DO UPDATE SET linked_guild = EXCLUDED.linked_guild;
+                    """,
+                    str(server_id),
+                    guild_id,
+                )
+
+
+async def replace_guild_members(guild_id: str, members: list[tuple[str, str, str]]):
+    pool = await get_pool()
+
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            await conn.execute(
+                "DELETE FROM guild_members WHERE guild_id = $1;",
+                guild_id,
+            )
+
+            if members:
+                await conn.executemany(
+                    """
+                    INSERT INTO guild_members (guild_id, user_id, username, role)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT (guild_id, user_id)
+                    DO UPDATE SET
+                        username = EXCLUDED.username,
+                        role = EXCLUDED.role;
+                    """,
+                    [(guild_id, user_id, username, role) for user_id, username, role in members],
+                )
+
 
 async def update_job_claimer(job_id, claimer_id):
-    async with aiosqlite.connect('jobs.db') as db:
-        await db.execute('''
+    pool = await get_pool()
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
             UPDATE jobs
-            SET claimer_id = ?
-            WHERE job_id = ?
-        ''', (claimer_id, job_id))
-        await db.commit()
+            SET claimer_id = $1
+            WHERE job_id = $2;
+            """,
+            claimer_id,
+            job_id,
+        )
+
 
 async def update_job_message(job_id, message_id):
-    async with aiosqlite.connect('jobs.db') as db:
-        await db.execute('''
+    pool = await get_pool()
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
             UPDATE jobs
-            SET message_id = ?
-            WHERE job_id = ?
-        ''', (message_id, job_id))
-        await db.commit()
+            SET message_id = $1
+            WHERE job_id = $2;
+            """,
+            message_id,
+            job_id,
+        )
+
 
 async def delete_job(job_id):
-    try:
-        async with aiosqlite.connect('jobs.db') as db:
-            await db.execute('''
-                DELETE FROM jobs
-                WHERE job_id = ?
-            ''', (job_id,))
-            await db.commit()
-    except Exception as e:
-        print(f"An task deletion error occurred: {e}")
+    pool = await get_pool()
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            DELETE FROM jobs
+            WHERE job_id = $1;
+            """,
+            job_id,
+        )
+
 
 async def fetch_job(job_id):
-    async with aiosqlite.connect('jobs.db') as db, db.execute('SELECT * FROM jobs WHERE job_id = ?', (job_id,)) as cursor:
-        job = await cursor.fetchone()
-        return job
+    pool = await get_pool()
+
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT *
+            FROM jobs
+            WHERE job_id = $1;
+            """,
+            job_id,
+        )
+
+    return tuple(row) if row else None
+
 
 async def fetch_job_location(job_id):
-    async with aiosqlite.connect('jobs.db') as db, db.execute('SELECT message_id, channel_id, server_id FROM jobs WHERE job_id = ?', (job_id,)) as cursor:
-        job = await cursor.fetchone()
-        return job
+    pool = await get_pool()
 
-async def add_job(job_id, author_id, item, quantity, reward, details, time_limit, message_id, channel_id, server_id, claimer_id=None):
-    async with aiosqlite.connect('jobs.db') as db:
-        await db.execute('''
-            INSERT OR REPLACE INTO jobs (job_id, author_id, item, quantity, reward, details, time_limit, claimer_id, message_id, channel_id, server_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ''', (job_id, author_id, item, quantity, reward, details, time_limit, claimer_id, message_id, channel_id, server_id))
-        await db.commit()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT message_id, channel_id, server_id
+            FROM jobs
+            WHERE job_id = $1;
+            """,
+            job_id,
+        )
+
+    return tuple(row) if row else None
+
+
+async def add_job(
+    job_id,
+    author_id,
+    item,
+    quantity,
+    reward,
+    details,
+    time_limit,
+    message_id,
+    channel_id,
+    server_id,
+    claimer_id=None,
+):
+    pool = await get_pool()
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO jobs (
+                job_id,
+                author_id,
+                item,
+                quantity,
+                reward,
+                details,
+                time_limit,
+                claimer_id,
+                message_id,
+                channel_id,
+                server_id
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            ON CONFLICT (job_id)
+            DO UPDATE SET
+                author_id = EXCLUDED.author_id,
+                item = EXCLUDED.item,
+                quantity = EXCLUDED.quantity,
+                reward = EXCLUDED.reward,
+                details = EXCLUDED.details,
+                time_limit = EXCLUDED.time_limit,
+                claimer_id = EXCLUDED.claimer_id,
+                message_id = EXCLUDED.message_id,
+                channel_id = EXCLUDED.channel_id,
+                server_id = EXCLUDED.server_id;
+            """,
+            str(job_id),
+            author_id,
+            item,
+            int(quantity),
+            reward,
+            details,
+            float(time_limit),
+            claimer_id,
+            message_id,
+            channel_id,
+            server_id,
+        )
+
 
 async def fetch_unclaimed_jobs(page_number: int = 1, server: str | None = None):
-    if server:
-        limit = 4
-        offset = 4 * (page_number - 1)
-        query = 'SELECT * FROM jobs WHERE claimer_id IS NULL AND server_id = ? LIMIT ? OFFSET ?'
-        async with aiosqlite.connect('jobs.db') as db, db.execute(query, (server, limit, offset)) as cursor:
-            return await cursor.fetchall()
-    else:
-        async with aiosqlite.connect('jobs.db') as db, db.execute(
-            f'SELECT * FROM jobs WHERE claimer_id IS NULL LIMIT 4 OFFSET {4 * (page_number - 1)}') as cursor:
-            return await cursor.fetchall()
+    pool = await get_pool()
+
+    limit = 4
+    offset = limit * (page_number - 1)
+
+    async with pool.acquire() as conn:
+        if server:
+            rows = await conn.fetch(
+                """
+                SELECT *
+                FROM jobs
+                WHERE claimer_id IS NULL
+                  AND server_id = $1
+                ORDER BY time_limit ASC
+                LIMIT $2 OFFSET $3;
+                """,
+                int(server),
+                limit,
+                offset,
+            )
+        else:
+            rows = await conn.fetch(
+                """
+                SELECT *
+                FROM jobs
+                WHERE claimer_id IS NULL
+                ORDER BY time_limit ASC
+                LIMIT $1 OFFSET $2;
+                """,
+                limit,
+                offset,
+            )
+
+    return [tuple(row) for row in rows]
+
 
 async def fetch_linked_wallets(user_id):
-    async with aiosqlite.connect('discord.db') as db, db.execute('SELECT * FROM discord_users WHERE user_id = ?', (user_id,)) as cursor:
-        return await cursor.fetchone()
+    pool = await get_pool()
+
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT *
+            FROM discord_users
+            WHERE user_id = $1;
+            """,
+            str(user_id),
+        )
+
+    return tuple(row) if row else None
+
 
 async def add_collab_tokens(user_id, access_token, refresh_token):
-    async with aiosqlite.connect('discord.db') as db:
-        await db.execute(
-        '''INSERT OR REPLACE INTO discord_users (user_id, access_token, refresh_token)
-        VALUES (?, ?, ?)''',
-        (user_id, access_token, refresh_token)
+    pool = await get_pool()
+
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO discord_users (user_id, access_token, refresh_token)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (user_id)
+            DO UPDATE SET
+                access_token = EXCLUDED.access_token,
+                refresh_token = EXCLUDED.refresh_token;
+            """,
+            str(user_id),
+            access_token,
+            refresh_token,
         )
-        await db.commit()
+
 
 async def add_collab_wallets(user_id, wallets, pixels_ids):
-    async with aiosqlite.connect('discord.db') as db:
-        await db.execute(
-        '''INSERT OR REPLACE INTO discord_users (user_id, wallets, pixels_ids)
-        VALUES (?, ?, ?)''',
-        (user_id, wallets, pixels_ids)
-        )
-        await db.commit()
-        print(f"Inserted {wallets} linked to {pixels_ids} into database for {user_id}!")
+    pool = await get_pool()
 
-async def batch_update_players(cursor, total_data_batch, skill_data_batch):
-    if 'total' in skill_data_batch:
-        del skill_data_batch['total']
-    await cursor.executemany(
-        '''INSERT OR REPLACE INTO total (user_id, username, level, exp)
-      VALUES (?, ?, ?, ?)''', total_data_batch)
-    total_data_batch.clear()
-    
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO discord_users (user_id, wallets, pixels_ids)
+            VALUES ($1, $2, $3)
+            ON CONFLICT (user_id)
+            DO UPDATE SET
+                wallets = EXCLUDED.wallets,
+                pixels_ids = EXCLUDED.pixels_ids;
+            """,
+            str(user_id),
+            wallets,
+            pixels_ids,
+        )
+
+    print(f"Inserted {wallets} linked to {pixels_ids} into database for {user_id}!")
+
+
+async def batch_update_players(conn, total_data_batch, skill_data_batch):
+    if total_data_batch:
+        await conn.executemany(
+            """
+            INSERT INTO total (user_id, username, level, exp)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (user_id)
+            DO UPDATE SET
+                username = EXCLUDED.username,
+                level = EXCLUDED.level,
+                exp = EXCLUDED.exp;
+            """,
+            total_data_batch,
+        )
+        total_data_batch.clear()
+
+    skill_data_batch.pop("total", None)
+
     for skill, batch in skill_data_batch.items():
-        await cursor.executemany(
-            f'''INSERT OR REPLACE INTO {skill}
-          (user_id, username, level, exp, current_exp)
-          VALUES (?, ?, ?, ?, ?)''', batch)
+        if not batch:
+            continue
+
+        await conn.executemany(
+            f"""
+            INSERT INTO {skill} (user_id, username, level, exp, current_exp)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (user_id)
+            DO UPDATE SET
+                username = EXCLUDED.username,
+                level = EXCLUDED.level,
+                exp = EXCLUDED.exp,
+                current_exp = EXCLUDED.current_exp;
+            """,
+            batch,
+        )
         batch.clear()
 
+
 async def get_discord_roles(server_id):
-    async with aiosqlite.connect('discord.db') as db, db.execute('SELECT * FROM discord_servers WHERE server_id = ?', (server_id,)) as cursor:
-        result = await cursor.fetchone()
-        return result
+    pool = await get_pool()
+
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT *
+            FROM discord_servers
+            WHERE server_id = $1;
+            """,
+            str(server_id),
+        )
+
+    return tuple(row) if row else None
+
 
 async def get_guild_handle(guild_id):
-    async with aiosqlite.connect('leaderboard.db') as db2, db2.execute('SELECT handle FROM guilds WHERE id = ?', (guild_id,)) as cursor2:
-        guild_handle = await cursor2.fetchone()
-        return guild_handle
-                
+    pool = await get_pool()
+
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT handle
+            FROM guilds
+            WHERE id = $1;
+            """,
+            guild_id,
+        )
+
+    return tuple(row) if row else None
+
+async def fetch_all_jobs():
+    pool = await get_pool()
+
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT
+                job_id,
+                time_limit,
+                message_id,
+                channel_id,
+                server_id
+            FROM jobs;
+            """
+        )
+
+    return [dict(row) for row in rows]
+
+async def fetch_all_assigned_guild_member_ids() -> set[str]:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT DISTINCT user_id
+            FROM guild_members;
+            """
+        )
+    return {row["user_id"] for row in rows}

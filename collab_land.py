@@ -1,4 +1,3 @@
-from operator import indexOf
 import discord
 from database import fetch_linked_wallets
 from constants import COLLAB_ID, REDIRECT_URI

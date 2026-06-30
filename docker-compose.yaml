@@ -35,5 +35,19 @@ services:
       poetry run hypercorn webserver:app --bind 0.0.0.0:5050
       "
 
+  postgres:
+    image: postgres:16
+    container_name: infiniportal-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: infiniportal
+      POSTGRES_USER: infiniportal
+      POSTGRES_PASSWORD: infiniportal_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
 volumes:
   infiniportal-data:
+  postgres-data:

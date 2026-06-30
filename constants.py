@@ -1,8 +1,3 @@
-"""
-Mock constants for portfolio/demo use.
-This file replaces production URLs with local test endpoints.
-"""
-
 from enum import Enum
 import os
 
@@ -16,6 +11,8 @@ COLLAB_SECRET = os.getenv("COLLAB_SECRET", "")
 COLLAB_KEY = os.getenv("COLLAB_API_KEY", "")
 WEBSITE_LINK = "https://infiniportal.quwin.dev/player"
 SERVER_IP = os.getenv("SERVER_IP", "0.0.0.0")
+DATABASE_URL=os.getenv("DATABASE_URL", "")
+
 
 # -----------------------------
 # Local  API base
@@ -68,8 +65,8 @@ ICON_END = ".png"
 # -----------------------------
 
 BATCH_SIZE = 25
-GIVE_UP = 10
-FIRST_SPECK = 1
+GIVE_UP = 1000
+FIRST_SPECK = 200
 SPECK_RATE = 0.2
 
 

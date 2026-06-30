@@ -10,7 +10,7 @@ from modal import JobInput
 from job import JobView, delete_job_message, readd_job_view
 from collab_land import collab_channel, CollabButtons
 from guild import all_guilds_data
-import aiosqlite
+from database import get_pool, fetch_all_jobs
 import aiohttp
 import time
 from initalize_server import config_channel, firstMessageView
@@ -135,35 +135,40 @@ def leave_server_embed(server_name):
 
 
 async def init_job_views(client: discord.Client):
-  async with aiosqlite.connect('jobs.db') as db, db.execute(
-      'SELECT job_id, time_limit, message_id, channel_id, server_id FROM jobs'
-  ) as cursor:
-    jobs = await cursor.fetchall()
+    jobs = await fetch_all_jobs()
 
-  current_time: float = time.time()
-  for row in jobs:
-    expiration_date = float(row[1])
-    job_id = row[0]
-    message_id = row[2]
-    channel_id = row[3]
-    server_id = row[4]
-    if current_time < expiration_date:
-      if server_id is None:  # backwards compatability + DM compatability
-        client.add_view(JobView(job_id, client))
-      else:
-        view_lifetime = expiration_date - current_time
-        try:
-          await readd_job_view(client, job_id, view_lifetime, message_id,
-                               channel_id, server_id)
-        except Exception as e:
-          print(f'Job view add on init error: {e},\n{row}')
-    else:
-      try:
-        await delete_job(job_id)
-        await delete_job_message(job_id, client)
-      except Exception as e:
-        print(f'Job delete on init error: {e},\n{row}')
+    current_time: float = time.time()
 
+    for job in jobs:
+        job_id = job["job_id"]
+        expiration_date = float(job["time_limit"])
+        message_id = job["message_id"]
+        channel_id = job["channel_id"]
+        server_id = job["server_id"]
+
+        if current_time < expiration_date:
+            if server_id is None:
+                client.add_view(JobView(job_id, client))
+            else:
+                view_lifetime = expiration_date - current_time
+
+                try:
+                    await readd_job_view(
+                        client,
+                        job_id,
+                        view_lifetime,
+                        message_id,
+                        channel_id,
+                        server_id,
+                    )
+                except Exception as e:
+                    print(f"Job view add on init error: {e},\n{job}")
+        else:
+            try:
+                await delete_job(job_id)
+                await delete_job_message(job_id, client)
+            except Exception as e:
+                print(f"Job delete on init error: {e},\n{job}")
 
 @tree.command(name="clear_commands",
               description="Clear commands",
@@ -196,24 +201,13 @@ async def add_commands(interaction, server: str | None = None):
   await interaction.response.send_message('Command tree synced!',
                                           ephemeral=True)
 
-
-@tree.command(name="raw_sql",
-              description="break da database",
-              guild=discord.Object(id=1234015429874417706))
-async def raw_sql(interaction, database: str, execute: str):
-  await interaction.response.defer()
-  async with aiosqlite.connect(f'{database}.db') as db:
-    await db.execute(execute)
-    await db.commit()
-  await interaction.followup.send(f'Executed command {execute}!')
-
-
 @tree.command(name="lookup", description="Lookup a player's Pixels profile")
 @app_commands.describe(
     input="Enter a user's Username, UserID, or Wallet Address")
 async def lookup(interaction, input: str):
   try:
-    async with aiosqlite.connect('leaderboard.db') as conn:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
       result = await lookup_profile(conn, input)
       if result is None:
         string = f"Could not find the player `{input}`. Please try again"
@@ -319,10 +313,9 @@ async def taskboard(interaction: discord.Interaction, page_number: int = 1):
 
 @tasks.loop(minutes=2880)
 async def batch_speck_update():
-  async with aiosqlite.connect(
-      'leaderboard.db') as conn, aiohttp.ClientSession() as session:
+  pool = await get_pool()
+  async with pool.acquire() as conn, aiohttp.ClientSession() as session:
     await speck_data(conn, session)
-
 
 update_set: set[str] = {
     '65e3dd3bebdfdac278077b85',
@@ -337,7 +330,8 @@ async def update_set_update():
 @tasks.loop(minutes=30)
 async def batch_nft_land_update():  # Need to rename
   print(f'Updating {len(update_set)} Player(s)')
-  async with aiosqlite.connect('leaderboard.db') as conn:
+  pool = await get_pool()
+  async with pool.acquire() as conn:
     await nft_land_data(conn, update_set)
 
 
