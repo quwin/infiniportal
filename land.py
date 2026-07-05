@@ -11,7 +11,7 @@ async def landowners_update(landowner_set: set[str]):
     i = 1
 
     while i <= 5000:
-        time.sleep(.2)
+        time.sleep(.1)
         async with aiohttp.ClientSession() as session, session.get(NFT_LAND_LINK + str(i)) as response:
             if response.status != 200:
                 print(f'NFT Land response not Found: {i}')
@@ -55,15 +55,15 @@ async def speck_data(conn, session):
     limiter = AdaptiveRateLimiter(3, 1)
 
     while True:
-        if i % BATCH_SIZE == 0:
+        if i % int(BATCH_SIZE) == 0:
             print(f'{i} Specks scanned.')
             await batch_update_players(conn, total_data_batch, skill_data_batch)
             limiter.reset()
 
-        async with limiter, session.get(SPECK_OWNER_LINK + str(FIRST_SPECK + i)) as response:
+        async with limiter, session.get(SPECK_OWNER_LINK + str(int(FIRST_SPECK) + i)) as response:
             if response.status != 200:
-                print(f'Speck number not Found: {FIRST_SPECK + i}')
-                await asyncio.sleep(5)
+                print(f'Speck number not Found: {int(FIRST_SPECK) + i}')
+                await asyncio.sleep(3)
                 nulls += 1
                 i += 1
                 continue
@@ -71,9 +71,9 @@ async def speck_data(conn, session):
             data = await response.json()
             player_data = data.get('player', None)
             if player_data is None:
-                if nulls > GIVE_UP:
+                if nulls > int(GIVE_UP):
                     print(
-                        f'Player Data not Found for Speck {FIRST_SPECK + i-GIVE_UP} through Speck {FIRST_SPECK + i}, stopping'
+                        f'Player Data not Found for Speck {int(FIRST_SPECK) + i-int(GIVE_UP)} through Speck {int(FIRST_SPECK) + i}, stopping'
                     )
                     await batch_update_players(conn, total_data_batch, skill_data_batch)
                     limiter.reset()
