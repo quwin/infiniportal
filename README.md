@@ -1,57 +1,212 @@
-# Infiniport.al
-~~https://infiniport.al~~ Currently archived
+# Infiniportal
 
-Infiniportal is a Pixels.xyz Profile viewer and Community Management tool, available as both a website and a Discord App.
-As a community tool, usage is primarily focused on the Discord Application, with the website for offline lookups only. 
+**A Discord-native community management tool for Pixels.xyz guilds, players, and servers.**
 
-The Infiniportal Discord App also includes features such as Guild-based Discord Server Management, Local Guild Leaderboards, and Player-created Tasks for other members to fulfill. 
+Infiniportal helps Pixels communities look up player profiles, manage guild leaderboards, verify linked accounts, assign Discord roles, and coordinate in-game tasks — all from inside Discord.
 
-## Usage
-The Discord App can be added through:
+> Built for Pixels.xyz communities that want cleaner onboarding, better guild visibility, and lightweight automation without making members leave Discord.
 
-~~https://discord.com/oauth2/authorize?client_id=1233991850470277130&scope=bot&permissions=1342598160~~ Currently archived
+<img width="716" height="439" alt="website_ss" src="https://github.com/user-attachments/assets/cd25d3ee-4158-47c7-bdc1-25a097b7cdb8" />
 
-For proper usage, the Infiniport.al Discord bot requires at least the following permissions:
-- `Read Messages / View Channels`
-- `Send Messages`
-- `Manage Messages`
-- `Manage Channels`
-- `Manage Roles`
-- `Embed Links`
-- `Mention Everyone`
-- `Use Activities`
-  
-Failure to provide the necessary permissions will result in errors in usage, with the removal and re-addition of the bot as the necessary resolution.
+---
 
-Upon addition to a Discord Server, Infiniport.al will automatically create an `#infiniportal-config` channel, with the following message:
+## What Is Infiniportal?
 
-<img src="examples/welcome.png" width="450" height="400">
+Infiniportal is a Discord bot and web companion for Pixels.xyz communities.
 
-From there, setting the Server's guild is possible, for the local `/leaderboard` command, as well as Role Management settings and other information. 
+It gives server owners and guild leaders a simple way to:
 
-## Account Linking
-In order for Pixels.xyz accounts to be linked to Discord accounts for Role Management, the Collab.Land API is used.
+* Look up Pixels player profiles
+* View global and guild-specific leaderboards
+* Connect Discord users to Pixels accounts
+* Verify wallet-linked accounts through Collab.Land
+* Automatically assign Discord roles based on Pixels guild data
+* Create and manage community tasks
 
-Users must have access to the crypto wallet used for their Pixels.xyz account, and will sign a read-only transaction linking their accounts. 
+The goal is to make Pixels community management easier, more transparent, and less manual.
 
-This is reversable at any time, and secured by the Collab.Land API.
+---
 
-Example:
+## Why Use It?
 
-<img src="examples/link_account.png" width="700" height="700">
+Pixels guilds often need to answer the same questions over and over:
 
-## Commands
+* Who is this player?
+* What is their Pixels profile?
+* Are they in our guild?
+* What role should they have?
+* Who are our top players?
+* What tasks are available for members?
 
-The general list of commands can be seen here, with usage tied to Discord's Command System:
+Infiniport.al brings those workflows into Discord with slash commands, buttons, embeds, and server-specific settings.
 
-<img src="examples/command_list.png" width="400" height="400">
+---
 
-Examples of the commands can be seen here:
+## Core Features
 
-<img src="examples/account_lookup.png" width="400" height="400">
+### Player Lookup
 
-<img src="examples/guild_leaderboard.png" width="400" height="400">
+Search for a Pixels player by username, user ID, or wallet address.
 
-<img src="examples/global_leaderboard.png" width="400" height="400">
+Useful for checking player profiles, skill progress, and linked account information quickly from Discord.
 
-<img src="examples/claimable_task.png" width="400" height="400">
+```md
+/lookup
+```
+
+---
+
+### Guild/Global Leaderboards
+
+View rankings for your assigned Pixels guild, as well as global rankings, directly in Discord.
+
+Leaderboards can be filtered by skill, total level, and experience.
+
+```md
+/leaderboard
+/global_leaderboard
+```
+
+---
+
+### Account Linking
+
+Members can connect their Pixels accounts using a Collab.Land-powered flow.
+
+Infiniport.al uses linked wallet information to verify account ownership and associate Discord users with Pixels accounts.
+
+---
+
+### Role Automation
+
+Server admins can configure Discord roles based on Pixels-related requirements.
+
+Examples:
+
+* Guild Admin
+* Guild Worker
+* Guild Member
+* Shard Pledger
+* Shard Owner
+
+This helps communities gate channels, permissions, or recognition roles using Pixels guild data.
+
+---
+
+### Community Taskboard
+
+Members can post, claim, update, bump, and close tasks.
+
+This is useful for guild work, item requests, community coordination, and reward-based player tasks.
+
+```md
+/task create
+/taskboard
+```
+
+---
+
+## How It Works
+
+### 1. Add Infiniportal to Your Server
+
+Invite the bot to your Discord server [using this link](https://discord.com/oauth2/authorize?client_id=1233991850470277130&scope=bot&permissions=1342598160)<img width="1432" height="879" alt="website_ss" src="https://github.com/user-attachments/assets/51ac4a9f-0f16-42ac-9dff-097f236dfe05" />
+ and grant the required permissions.
+
+Recommended permissions:
+
+* View Channels
+* Send Messages
+* Manage Messages
+* Manage Channels
+* Manage Roles
+* Embed Links
+* Use Application Commands
+
+---
+
+### 2. Configure Your Server
+
+After setup, Infiniportal creates a private configuration area for server admins.
+
+From there, admins can:
+
+* Assign a Pixels guild
+* Configure role rules
+* View command information
+* Manage server-specific settings
+
+---
+
+### 3. Let Members Connect Their Accounts
+
+Members connect their Pixels account through the Discord account-linking flow.
+
+Infiniportal does not ask for private keys, seed phrases, or transactions.
+
+---
+
+### 4. Use Commands in Discord
+
+Once configured, your community can use Infiniportal directly through slash commands.
+
+Popular commands:
+
+```md
+/lookup
+/leaderboard
+/global_leaderboard
+/task create
+/taskboard
+```
+
+---
+
+## Security & Privacy
+
+Infiniportal is designed around read-only verification.
+
+It will never ask users for:
+
+* Seed phrases
+* Private keys
+* Token approvals
+* Wallet signatures for transactions
+* Direct payments
+
+Account verification is handled through Collab.Land, and the bot only uses the linked account data needed to verify Pixels ownership and assign server roles.
+
+---
+
+## Roadmap
+
+Planned improvements include:
+
+* Improved web dashboard
+* More role requirement types
+* Better guild analytics
+* Expanded taskboard controls
+* Cleaner onboarding flow
+* Additional Pixels account and land-related views
+
+---
+
+## Contributing
+
+Contributions, bug reports, and feature suggestions are welcome.
+
+Good areas to contribute:
+
+* UI/UX improvements
+* Discord command polish
+* Documentation
+* Role automation logic
+* Web dashboard features
+* Error handling and setup flow
+
+---
+
+## Links
+
+* Website: https://infiniportal.quwin.dev
+* Discord: [Add invite link here](https://discord.com/oauth2/authorize?client_id=1233991850470277130&scope=bot&permissions=1342598160)
