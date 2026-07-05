@@ -52,10 +52,7 @@ def normalize_asyncpg_dsn(dsn: str) -> tuple[str, ssl.SSLContext | bool | None]:
     cleaned_query = urlencode(query_params)
     cleaned_dsn = urlunparse(parsed._replace(query=cleaned_query))
 
-    if sslmode == "require":
-        return cleaned_dsn, True
-
-    if sslmode in {"verify-ca", "verify-full"}:
+    if sslmode in {"verify-ca", "verify-full", "require"}:
         ssl_context = _ssl_context_from_aiven_ca()
 
         if sslmode == "verify-ca":
