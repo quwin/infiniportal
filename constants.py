@@ -13,6 +13,15 @@ WEBSITE_LINK = "https://infiniportal.quwin.dev/player"
 SERVER_IP = os.getenv("SERVER_IP", "0.0.0.0")
 DATABASE_URL=os.getenv("DATABASE_URL", "")
 
+# -----------------------------
+# Batch update settings
+# -----------------------------
+
+BATCH_SIZE = os.getenv("BATCH_SIZE", 25)
+GIVE_UP = os.getenv("GIVE_UP", 100)
+FIRST_SPECK = os.getenv("GIVE_UP", 200)
+SPECK_RATE = os.getenv("GIVE_UP", 0.2)
+
 
 # -----------------------------
 # Local  API base
@@ -59,15 +68,6 @@ SKILLS_EMOJI = [
 ICON = "https://d31ss916pli4td.cloudfront.net/game/ui/skills/skills_icon_"
 ICON_END = ".png"
 
-
-# -----------------------------
-# Batch update settings
-# -----------------------------
-
-BATCH_SIZE = 25
-GIVE_UP = 1000
-FIRST_SPECK = 200
-SPECK_RATE = 0.2
 
 
 # -----------------------------
