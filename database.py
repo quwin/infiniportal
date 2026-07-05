@@ -1,21 +1,36 @@
 import os
+import ssl
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+from constants import DATABASE_URL, SKILLS
 import asyncpg
-from constants import SKILLS
-
-DATABASE_URL = os.environ["DATABASE_URL"]
 
 _pool: asyncpg.Pool | None = None
+
+def normalize_asyncpg_dsn(dsn: str) -> tuple[str, ssl.SSLContext | None]:
+    parsed = urlparse(dsn)
+    query_params = dict(parse_qsl(parsed.query))
+
+    sslmode = query_params.pop("sslmode", None)
+
+    cleaned_query = urlencode(query_params)
+    cleaned_dsn = urlunparse(parsed._replace(query=cleaned_query))
+
+    if sslmode in {"require", "verify-ca", "verify-full"}:
+        return cleaned_dsn, ssl.create_default_context()
+
+    return cleaned_dsn, None
 
 
 async def get_pool() -> asyncpg.Pool:
     global _pool
     if _pool is None:
+        dsn, ssl_config = normalize_asyncpg_dsn(DATABASE_URL)
         _pool = await asyncpg.create_pool(
-            DATABASE_URL,
+            dsn=dsn,
+            ssl=ssl_config,
             min_size=1,
-            max_size=10,
+            max_size=5,
         )
-
     return _pool
 
 
