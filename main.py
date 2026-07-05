@@ -329,7 +329,7 @@ async def update_set_update():
 
 @tasks.loop(minutes=30)
 async def batch_nft_land_update():  # Need to rename
-  print(f'Updating {len(update_set)} Player(s)')
+  print(f'Updating {len(update_set)} potential Landowners(s)')
   pool = await get_pool()
   async with pool.acquire() as conn:
     await nft_land_data(conn, update_set)

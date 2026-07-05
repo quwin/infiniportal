@@ -9,7 +9,7 @@ TOKEN = os.getenv("DISCORD_TOKEN", "")
 COLLAB_ID = os.getenv("COLLAB_ID", "")
 COLLAB_SECRET = os.getenv("COLLAB_SECRET", "")
 COLLAB_KEY = os.getenv("COLLAB_API_KEY", "")
-WEBSITE_LINK = "https://infiniportal.quwin.dev/player"
+WEBSITE_LINK = "https://infiniportal.quwin.dev/player/"
 SERVER_IP = os.getenv("SERVER_IP", "0.0.0.0")
 DATABASE_URL=os.getenv("DATABASE_URL", "")
 
