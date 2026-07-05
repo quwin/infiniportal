@@ -1,11 +1,46 @@
 from constants import DATABASE_URL, SKILLS
-import ssl
 import os
+import ssl
+import tempfile
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import asyncpg
 
+from constants import SKILLS
+
+DATABASE_URL = os.environ["DATABASE_URL"]
+
 _pool: asyncpg.Pool | None = None
+
+
+def _ssl_context_from_aiven_ca() -> ssl.SSLContext:
+    ca_path = os.environ.get("AIVEN_CA_PATH")
+    ca_contents = os.environ.get("AIVEN_CA")
+
+    if ca_path:
+        if not os.path.exists(ca_path):
+            raise RuntimeError(
+                f"AIVEN_CA_PATH is set to {ca_path}, but that file does not exist."
+            )
+
+        return ssl.create_default_context(cafile=ca_path)
+
+    if ca_contents:
+        cert_file = tempfile.NamedTemporaryFile(
+            mode="w",
+            suffix=".pem",
+            delete=False,
+        )
+        cert_file.write(ca_contents)
+        cert_file.flush()
+        cert_file.close()
+
+        return ssl.create_default_context(cafile=cert_file.name)
+
+    raise RuntimeError(
+        "DATABASE_URL uses sslmode=verify-ca or verify-full, but neither "
+        "AIVEN_CA_PATH nor AIVEN_CA is set."
+    )
 
 
 def normalize_asyncpg_dsn(dsn: str) -> tuple[str, ssl.SSLContext | bool | None]:
@@ -17,9 +52,11 @@ def normalize_asyncpg_dsn(dsn: str) -> tuple[str, ssl.SSLContext | bool | None]:
     cleaned_query = urlencode(query_params)
     cleaned_dsn = urlunparse(parsed._replace(query=cleaned_query))
 
-    if sslmode in {"verify-ca", "verify-full", "require"}:
-        ca_path = os.environ["AIVEN_CA"]
-        ssl_context = ssl.create_default_context(cafile=ca_path)
+    if sslmode == "require":
+        return cleaned_dsn, True
+
+    if sslmode in {"verify-ca", "verify-full"}:
+        ssl_context = _ssl_context_from_aiven_ca()
 
         if sslmode == "verify-ca":
             ssl_context.check_hostname = False
