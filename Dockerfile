@@ -1,3 +1,13 @@
+FROM node:20-slim AS frontend-builder
+
+WORKDIR /frontend
+
+COPY frontend/package*.json ./
+RUN npm ci
+
+COPY frontend/ ./
+RUN npm run build
+
 FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1 \
@@ -15,9 +25,10 @@ RUN apt-get update \
 RUN pip install --no-cache-dir "poetry==$POETRY_VERSION"
 
 COPY pyproject.toml poetry.lock ./
-
 RUN poetry install --only main --no-root
 
 COPY . .
+
+COPY --from=frontend-builder /frontend/build /app/frontend/build
 
 CMD ["sh", "-c", "hypercorn webserver:app --bind 0.0.0.0:${PORT:-8080}"]
