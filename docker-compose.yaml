@@ -1,40 +1,4 @@
 services:
-  bot:
-    build: .
-    container_name: infiniportal-bot
-    restart: unless-stopped
-    env_file:
-      - .env
-    volumes:
-      - infiniportal-data:/app/data
-    working_dir: /app
-    command: >
-      sh -c "
-      ln -sf /app/data/leaderboard.db /app/leaderboard.db &&
-      ln -sf /app/data/jobs.db /app/jobs.db &&
-      ln -sf /app/data/discord.db /app/discord.db &&
-      python main.py
-      "
-
-  web:
-    build: .
-    container_name: infiniportal-web
-    restart: unless-stopped
-    env_file:
-      - .env
-    ports:
-      - "5050:5050"
-    volumes:
-      - infiniportal-data:/app/data
-    working_dir: /app
-    command: >
-      sh -c "
-      ln -sf /app/data/leaderboard.db /app/leaderboard.db &&
-      ln -sf /app/data/jobs.db /app/jobs.db &&
-      ln -sf /app/data/discord.db /app/discord.db &&
-      poetry run hypercorn webserver:app --bind 0.0.0.0:5050
-      "
-
   postgres:
     image: postgres:16
     container_name: infiniportal-postgres
@@ -48,6 +12,50 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    container_name: infiniportal-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    command: python main.py
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: infiniportal-web
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    ports:
+      - "5050:5000"
+    command: hypercorn webserver:app --bind 0.0.0.0:5050
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.bot
+    container_name: infiniportal-worker
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    command: python worker.py
+
 volumes:
-  infiniportal-data:
   postgres-data:
+  infiniportal-data:

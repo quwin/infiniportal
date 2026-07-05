@@ -439,7 +439,7 @@ async def serve_static(path: str):
 if __name__ == "__main__":
     app.run(
         host=os.getenv("SERVER_IP", SERVER_IP),
-        port=int(os.getenv("PORT", "5050")),
+        port=int(os.getenv("PORT", "8080")),
         debug=True,
         use_reloader=False,
     )
