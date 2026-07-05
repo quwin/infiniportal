@@ -110,8 +110,7 @@ This is useful for guild work, item requests, community coordination, and reward
 
 ### 1. Add Infiniportal to Your Server
 
-Invite the bot to your Discord server [using this link](https://discord.com/oauth2/authorize?client_id=1233991850470277130&scope=bot&permissions=1342598160)<img width="1432" height="879" alt="website_ss" src="https://github.com/user-attachments/assets/51ac4a9f-0f16-42ac-9dff-097f236dfe05" />
- and grant the required permissions.
+Invite the bot to your Discord server [using this link](https://discord.com/oauth2/authorize?client_id=1233991850470277130&scope=bot&permissions=1342598160) and grant the required permissions.
 
 Recommended permissions:
 
