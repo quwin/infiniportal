@@ -1,0 +1,20 @@
+steps:
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "build"
+      - "-f"
+      - "Dockerfile.bot"
+      - "-t"
+      - "us-west1-docker.pkg.dev/$PROJECT_ID/infiniportal/infiniportal-bot:$COMMIT_SHA"
+      - "."
+
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "push"
+      - "us-west1-docker.pkg.dev/$PROJECT_ID/infiniportal/infiniportal-bot:$COMMIT_SHA"
+
+images:
+  - "us-west1-docker.pkg.dev/$PROJECT_ID/infiniportal/infiniportal-bot:$COMMIT_SHA"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
