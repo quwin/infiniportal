@@ -44,6 +44,8 @@ Infiniport.al brings those workflows into Discord with slash commands, buttons, 
 
 ## Core Features
 
+<img src="examples/command_list.png" width="400" height="400">
+
 ### Player Lookup
 
 Search for a Pixels player by username, user ID, or wallet address.
@@ -53,6 +55,8 @@ Useful for checking player profiles, skill progress, and linked account informat
 ```md
 /lookup
 ```
+
+<img src="examples/account_lookup.png" width="400" height="400">
 
 ---
 
@@ -66,7 +70,8 @@ Leaderboards can be filtered by skill, total level, and experience.
 /leaderboard
 /global_leaderboard
 ```
-
+<img src="examples/guild_leaderboard.png" width="400" height="400">
+<img src="examples/global_leaderboard.png" width="400" height="400">
 ---
 
 ### Account Linking
@@ -74,6 +79,8 @@ Leaderboards can be filtered by skill, total level, and experience.
 Members can connect their Pixels accounts using a Collab.Land-powered flow.
 
 Infiniport.al uses linked wallet information to verify account ownership and associate Discord users with Pixels accounts.
+
+<img src="examples/link_account.png" width="400" height="400">
 
 ---
 
