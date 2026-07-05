@@ -27,7 +27,7 @@ SPECK_RATE = os.getenv("GIVE_UP", 0.2)
 # Local  API base
 # -----------------------------
 
-PROFILE_MID_LINK = "https://pixels-server.pixels.xyz/v1/player?mid="
+PROFILE_MID_LINK = "https://pixels-server.pixels.xyz/v1/player?detail=3&mid="
 SPECK_OWNER_LINK = "https://pixels-server.pixels.xyz/v1/infiniportal/farm_details/shareRent"
 NFT_LAND_LINK = "https://pixels-server.pixels.xyz/v1/infiniportal/farm_details/pixelsNFTFarm-"
 GUILD_LINK = "https://dashboard.pixels.xyz/guild/"

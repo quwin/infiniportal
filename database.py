@@ -619,3 +619,22 @@ async def fetch_all_assigned_guild_member_ids() -> set[str]:
             """
         )
     return {row["user_id"] for row in rows}
+
+async def find_cached_player(input_value: str):
+    pool = await get_pool()
+
+    normalized_input = input_value.strip()
+
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            """
+            SELECT user_id, username
+            FROM total
+            WHERE user_id = $1
+               OR LOWER(username) = LOWER($1)
+            LIMIT 1;
+            """,
+            normalized_input,
+        )
+
+    return dict(row) if row else None
